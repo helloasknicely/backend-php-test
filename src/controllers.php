@@ -52,7 +52,6 @@ $app->get('/logout', function () use ($app) {
 
 
 $app->get('/todo/{id}/{returntype}', function ($id, $returntype) use ($app) {
-
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
@@ -107,7 +106,7 @@ $app->post('/todo/add', function (Request $request) use ($app) {
     $description = $request->get('description');
 
     if (empty($description)) {
-        $app['session']->getFlashBag()->add('descriptiontError', 'Please enter a Description');
+        $app['session']->getFlashBag()->add('description', (object) ['added' => false, 'message' => 'Please enter a Description']);
         return $app->redirect('/todo');
     }
 
@@ -115,6 +114,8 @@ $app->post('/todo/add', function (Request $request) use ($app) {
         INSERT INTO `todos` (`user_id`, `description`)
         VALUES (?, ?)
     ", array($user_id, $description));
+
+    $app['session']->getFlashBag()->add('todoMessage', 'Todo added');
 
     return $app->redirect('/todo');
 });
@@ -129,6 +130,8 @@ $app->match('/todo/delete/{id}', function ($id) use ($app) {
         DELETE FROM `todos`
         WHERE `user_id` = ? AND `id` = ?
     ", array($user['id'], $id));
+
+    $app['session']->getFlashBag()->add('todoMessage', 'Todo has been removed');
 
     return $app->redirect('/todo');
 });
