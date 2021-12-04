@@ -21,14 +21,24 @@ $app->match('/login', function (Request $request) use ($app) {
     $username = $request->get('username');
     $password = $request->get('password');
 
-    if ($username) {
-        $sql = "SELECT * FROM users WHERE username = '$username' and password = '$password'";
-        $user = $app['db']->fetchAssoc($sql);
+    if (empty($username) || empty($password)) {
+        return $app['twig']->render('login.html', array());
+    }
 
-        if ($user){
-            $app['session']->set('user', $user);
-            return $app->redirect('/todo');
-        }
+    $sql = "SELECT * FROM `users` WHERE `username` = ?";
+    $query = $app['db']->executeQuery($sql, [$username]);
+    $user = $query->fetchAssociative();
+
+    if (!$user) {
+        $app['session']->getFlashBag()->add('loginError', 'Invalid login credentials');
+        return $app['twig']->render('login.html', array());
+    }
+
+    $valid = password_verify($password, $user['password']);
+
+    if ($valid){
+        $app['session']->set('user', $user);
+        return $app->redirect('/todo');
     }
 
     return $app['twig']->render('login.html', array());
@@ -46,21 +56,36 @@ $app->get('/todo/{id}', function ($id) use ($app) {
         return $app->redirect('/login');
     }
 
-    if ($id){
-        $sql = "SELECT * FROM todos WHERE id = '$id'";
-        $todo = $app['db']->fetchAssoc($sql);
-
-        return $app['twig']->render('todo.html', [
-            'todo' => $todo,
-        ]);
+    $params = array();
+    if ($id) {
+        $sql = "SELECT * FROM `todos` WHERE `user_id` = ? AND id = ?";
+        $params[] = $user['id'];
+        $params[] = $id;
     } else {
-        $sql = "SELECT * FROM todos WHERE user_id = '${user['id']}'";
-        $todos = $app['db']->fetchAll($sql);
+        $sql = "SELECT * FROM `todos` WHERE `user_id` = ?";
+        $params[] = $user['id'];
+    }
 
-        return $app['twig']->render('todos.html', [
-            'todos' => $todos,
+    $query = $app['db']->executeQuery($sql, $params);
+    $todos = $query->fetchAllAssociative();
+    $todos = is_array($todos) ? $todos : [];
+
+    foreach ($todos as &$todo) {
+        if (empty($todo['status'])) {
+            $todo['status'] = 'PROGRESS';
+        }
+    }
+
+    if ($id) {
+        return $app['twig']->render('todo.html', [
+            'todo' => reset($todos),
         ]);
     }
+
+    return $app['twig']->render('todos.html', [
+            'todos' => $todos,
+    ]);
+
 })
 ->value('id', null);
 
@@ -87,11 +112,36 @@ $app->post('/todo/add', function (Request $request) use ($app) {
 });
 
 
-
 $app->match('/todo/delete/{id}', function ($id) use ($app) {
+    if (null === $user = $app['session']->get('user')) {
+        return $app->redirect('/login');
+    }
 
-    $sql = "DELETE FROM todos WHERE id = '$id'";
-    $app['db']->executeUpdate($sql);
+    $delete = $app['db']->executeStatement("
+        DELETE FROM `todos`
+        WHERE `user_id` = ? AND `id` = ?
+    ", array($user['id'], $id));
+
+    return $app->redirect('/todo');
+});
+
+
+$app->match('/todo/status/{id}', function (Request $request, $id) use ($app) {
+    if (null === $user = $app['session']->get('user')) {
+        return $app->redirect('/login');
+    }
+
+    $status = $request->get('status');
+
+    if (empty(App\Entity\Todo::STATUSES[$status])) {
+        return $app->redirect('/todo');
+    }
+
+    $delete = $app['db']->executeStatement("
+        UPDATE `todos`
+        SET `status` = ?
+        WHERE `user_id` = ? AND `id` = ?
+    ", array($status, $user['id'], $id));
 
     return $app->redirect('/todo');
 });

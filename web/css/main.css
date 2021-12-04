@@ -5,3 +5,11 @@ body {
 .login-form > div {
     margin-top: 10px;
 }
+
+button[type="submit"].btn-link {
+  color: #777;
+}
+
+button[type="submit"].btn-link:focus, button[type="submit"].btn-link:hover {
+  text-decoration: none;
+}

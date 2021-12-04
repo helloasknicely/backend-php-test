@@ -3,6 +3,13 @@
 {% block content %}
     <div class="col-md-4 col-md-offset-4">
         <h1>Login</h1>
+
+        {% if app.session.flashbag.has('loginError') %}
+           <div class="alert alert-danger" role="alert">
+                {{ app.session.flashbag.get('loginError').0 }}
+           </div>
+        {% endif %}
+
         <form class="form-horizontal login-form" method="POST" action="/login">
             <div class="input-group">
                 <span class="input-group-addon"><i class="glyphicon glyphicon-user"></i></span>
