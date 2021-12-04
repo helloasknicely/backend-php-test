@@ -51,51 +51,92 @@ $app->get('/logout', function () use ($app) {
 });
 
 
-$app->get('/todo/{id}/{returntype}', function ($id, $returntype) use ($app) {
+$app->get('/todo/{id}/{returntype}', function (Request $request, $id, $returntype) use ($app) {
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
+
+    // Query builder for Todo items
     $params = array();
+    $conditions = array();
+
     if ($id) {
-        $sql = "SELECT * FROM `todos` WHERE `user_id` = ? AND id = ?";
+        $conditions[] = "`user_id` = ?";
+        $conditions[] = "`id` = ?";
         $params[] = $user['id'];
         $params[] = $id;
+
     } else {
-        $sql = "SELECT * FROM `todos` WHERE `user_id` = ?";
+        $conditions[] = "`user_id` = ?";
         $params[] = $user['id'];
     }
+
+    // Pagination
+    $items = $app['db']->executeQuery("
+        SELECT `id`
+        FROM `todos`
+        WHERE `user_id` = ?
+    ", array($user['id']))
+    ->fetchAllAssociative();
+
+    $numberoftodos = count($items);
+
+    $pagesize = App\Entity\Todo::PAGESIZE;
+    $totalpages = ceil($numberoftodos / $pagesize);
+    $totalpages = ($totalpages) <= 0 ? 1 : $totalpages;
+
+    $pagenumber = $request->query->get('p');
+    $pagenumber = is_scalar($pagenumber) ? intval($pagenumber) : 1;
+    $pagenumber = ($pagenumber <= 0 || $pagenumber > $totalpages) ? 1 : $pagenumber;
+
+    $keys = array_map(function($i) {
+        return $i['id'];
+    }, $items);
+
+    if ($pagenumber > 1 && $pagenumber <= $totalpages) {
+        $index = $keys[($pagenumber - 1) * $pagesize];
+        $conditions[] = "`id` >= ?";
+        $params[] = $index;
+    }
+
+    // Query
+    $sql = "
+        SELECT *
+        FROM `todos`
+        WHERE " . implode(" AND ", $conditions) . "
+        LIMIT {$pagesize}
+    ";
 
     $query = $app['db']->executeQuery($sql, $params);
     $todos = $query->fetchAllAssociative();
     $todos = is_array($todos) ? $todos : [];
 
-    foreach ($todos as &$todo) {
-        if (empty($todo['status'])) {
-            $todo['status'] = 'PROGRESS';
-        }
-    }
-
-    $data = array(
+    // Response
+    $pagedata = array(
         'todos' => $todos
     );
 
     if ($id) {
-        $data = array(
+        $pagedata = array(
             'todo' => reset($todos),
         );
     }
 
+    $pagedata['totalpages'] = $totalpages;
+    $pagedata['hasnext'] = ($pagenumber < $totalpages);
+    $pagedata['hasprev'] = ($pagenumber > 1);
+    $pagedata['currentpage'] = $pagenumber ?: 1;
+
     if ($returntype == 'json') {
-        $response = new Response(json_encode($data));
+        $response = new Response(json_encode($pagedata));
         $response->headers->set('Content-Type', 'application/json');
         return $response;
     }
 
-    return $app['twig']->render($id ? 'todo.html' : 'todos.html', $data);
+    return $app['twig']->render($id ? 'todo.html' : 'todos.html', $pagedata);
 })
 ->value('id', null)
 ->value('returntype', null);
-
 
 $app->post('/todo/add', function (Request $request) use ($app) {
     if (null === $user = $app['session']->get('user')) {

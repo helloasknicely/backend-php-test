@@ -7,4 +7,6 @@ class Todo
     	'PROGRESS' => 'In Progress',
     	'COMPLETE' => 'Completed'
     );
+
+    public const PAGESIZE = 5;
 }

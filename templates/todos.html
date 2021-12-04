@@ -5,60 +5,58 @@
     <h1>Todo List:</h1>
     {% if app.session.flashbag.has('todoMessage') %}
     <div class="alert alert-info" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         {% for message in app.session.flashbag.get('todoMessage') %}
             {{ message }}
         {% endfor %}
     </div>
     {% endif %}
     <table class="table table-striped">
-        {% for statusCode, statusLabel in constant('App\\Entity\\Todo::STATUSES') %}
+        <tr>
+            <th>Status</th>
+            <th colspan="2">Description</th>
+            <th></th>
+        </tr>
+        {% for todo in todos %}
             <tr>
-                <td colspan="4">
-                    <span class="label
-                    {% if statusCode == 'COMPLETE' %}
-                        label-success
-                    {% else %}
-                        label-info
-                    {% endif %}
-                    ">{{ statusLabel }}</span>
+            <td>
+                <div class="btn-group">
+                    <button type="button"
+                        class="btn btn-xs dropdown-toggle
+                            {% if todo.status == 'COMPLETE' %}
+                                btn-success
+                            {% else %}
+                                btn-info
+                            {% endif %}
+                        " data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                       {{ attribute(constant('App\\Entity\\Todo::STATUSES'), todo.status) }} <span class="caret"></span>
+                    </button>
+                        <ul class="dropdown-menu">
+                            {% for optionStatusCode, optionStatusLabel in constant('App\\Entity\\Todo::STATUSES') %}
+                                {% if optionStatusCode != todo.status %}
+                                 <li>
+                                    <form method="post" action="{{ app.request.baseurl }}/todo/status/{{ todo.id }}">
+                                        <button type="submit" class="btn btn-link" name="status" value="{{ optionStatusCode }}">
+                                            {{ optionStatusLabel }}
+                                        </button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                </div>
+            </td>
+                <td colspan="2">
+                    <a class="todoAdded" href="{{ app.request.baseurl }}/todo/{{ todo.id }}">
+                       {{ todo.description }}
+                    </a>
+                </td>
+                <td align="right">
+                    <form method="post" action="{{ app.request.baseurl }}/todo/delete/{{ todo.id }}">
+                        <button type="submit" class="btn btn-xs btn-danger"><span class="glyphicon glyphicon-remove glyphicon-white"></span></button>
+                    </form>
                 </td>
             </tr>
-            {% for todo in todos %}
-                {% if todo.status == statusCode %}
-                <tr>
-                    <td>
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="caret"></span>
-                            </button>
-                                <ul class="dropdown-menu">
-                                    {% for optionStatusCode, optionStatusLabel in constant('App\\Entity\\Todo::STATUSES') %}
-                                        {% if optionStatusCode != statusCode %}
-                                         <li>
-                                            <form method="post" action="{{ app.request.baseurl }}/todo/status/{{ todo.id }}">
-                                                <button type="submit" class="btn btn-link" name="status" value="{{ optionStatusCode }}">
-                                                    {{ optionStatusLabel }}
-                                                </button>
-                                            </form>
-                                        </li>
-                                        {% endif %}
-                                    {% endfor %}
-                                </ul>
-                        </div>
-                    </td>
-                    <td colspan="2">
-                        <a class="todoAdded" href="{{ app.request.baseurl }}/todo/{{ todo.id }}">
-                           {{ todo.description }}
-                        </a>
-                    </td>
-                    <td align="right">
-                        <form method="post" action="{{ app.request.baseurl }}/todo/delete/{{ todo.id }}">
-                            <button type="submit" class="btn btn-xs btn-danger"><span class="glyphicon glyphicon-remove glyphicon-white"></span></button>
-                        </form>
-                    </td>
-                </tr>
-                {% endif %}
-            {% endfor %}
         {% endfor %}
         <tr>
             <form method="post" action="{{ app.request.baseurl }}/todo/add">
@@ -83,5 +81,30 @@
             </form>
         </tr>
     </table>
+</div>
+<div class="col-md-4 col-md-offset-4 text-center">
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if (hasprev) %}
+            <li>
+                <a href="?p={{ currentpage - 1 }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% endif %}
+            {% for i in 1..totalpages %}
+            <li class="{% if (i == currentpage) %} active {% endif %}">
+                <a href="?p={{ i }}">{{ i }}</a>
+            </li>
+            {% endfor %}
+            {% if (hasnext) %}
+            <li>
+                <a href="?p={{ currentpage + 1 }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
 </div>
 {% endblock %}
