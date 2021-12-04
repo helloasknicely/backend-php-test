@@ -51,11 +51,11 @@ $app->get('/logout', function () use ($app) {
 });
 
 
-$app->get('/todo/{id}', function ($id) use ($app) {
+$app->get('/todo/{id}/{returntype}', function ($id, $returntype) use ($app) {
+
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
-
     $params = array();
     if ($id) {
         $sql = "SELECT * FROM `todos` WHERE `user_id` = ? AND id = ?";
@@ -76,18 +76,26 @@ $app->get('/todo/{id}', function ($id) use ($app) {
         }
     }
 
+    $data = array(
+        'todos' => $todos
+    );
+
     if ($id) {
-        return $app['twig']->render('todo.html', [
+        $data = array(
             'todo' => reset($todos),
-        ]);
+        );
     }
 
-    return $app['twig']->render('todos.html', [
-            'todos' => $todos,
-    ]);
+    if ($returntype == 'json') {
+        $response = new Response(json_encode($data));
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
+    }
 
+    return $app['twig']->render($id ? 'todo.html' : 'todos.html', $data);
 })
-->value('id', null);
+->value('id', null)
+->value('returntype', null);
 
 
 $app->post('/todo/add', function (Request $request) use ($app) {
