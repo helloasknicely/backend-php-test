@@ -73,11 +73,19 @@ $app->post('/todo/add', function (Request $request) use ($app) {
     $user_id = $user['id'];
     $description = $request->get('description');
 
-    $sql = "INSERT INTO todos (user_id, description) VALUES ('$user_id', '$description')";
-    $app['db']->executeUpdate($sql);
+    if (empty($description)) {
+        $app['session']->getFlashBag()->add('descriptiontError', 'Please enter a Description');
+        return $app->redirect('/todo');
+    }
+
+    $insert = $app['db']->executeStatement("
+        INSERT INTO `todos` (`user_id`, `description`)
+        VALUES (?, ?)
+    ", array($user_id, $description));
 
     return $app->redirect('/todo');
 });
+
 
 
 $app->match('/todo/delete/{id}', function ($id) use ($app) {

@@ -24,9 +24,16 @@
         <tr>
             <form method="post" action="{{ app.request.baseurl }}/todo/add">
                 <td colspan="3">
-                    <input type="textbox" name="description" class="small-6 small-center" placeholder="Description...">
+                    <div class="form-group has-error">
+                        <input type="textbox" name="description" class="small-6 small-center" placeholder="Description..." id="description">
+                        {% if app.session.flashbag.has('descriptiontError') %}
+                           <span class="help-block">
+                               {{ app.session.flashbag.get('descriptiontError').0 }}
+                           </span>
+                        {% endif %}
+                    </div>
                 </td>
-                <td>
+                <td align="right">
                     <button type="submit" class="btn btn-sm btn-primary">Add</button>
                 </td>
             </form>
