@@ -3,13 +3,42 @@ body {
 }
 
 .login-form > div {
-    margin-top: 10px;
+  margin-top: 10px;
 }
 
+[v-cloak] {
+  display: none;
+}
+
+/*
+ * Todo status drop down
+ */
 button[type="submit"].btn-link {
   color: #777;
 }
 
 button[type="submit"].btn-link:focus, button[type="submit"].btn-link:hover {
   text-decoration: none;
+}
+
+/*
+ * Vue transition for Todo list
+ */
+.todo-list-enter-active, .todo-list-leave-active {
+    transition: all 0.5s;
+}
+.todo-list-enter, .todo-list-leave-to {
+    opacity: 0;
+}
+
+/*
+ * Tooltip colour
+ */
+.todoItemAdded .tooltip-inner {
+  background-color: #3e8f3e;
+  color: #fff;
+}
+
+.todoItemAdded .tooltip.right .tooltip-arrow {
+  border-right-color: #3e8f3e;
 }

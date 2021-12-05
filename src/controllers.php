@@ -117,8 +117,14 @@ $app->get('/todo/{id}/{returntype}', function (Request $request, $id, $returntyp
     );
 
     if ($id) {
+        $todo = reset($todos);
+
+        if (empty($todo)) {
+             return $app->redirect('/todo');
+        }
+
         $pagedata = array(
-            'todo' => reset($todos),
+            'todo' => $todo,
         );
     }
 
@@ -127,7 +133,7 @@ $app->get('/todo/{id}/{returntype}', function (Request $request, $id, $returntyp
     $pagedata['hasprev'] = ($pagenumber > 1);
     $pagedata['currentpage'] = $pagenumber ?: 1;
 
-    if ($returntype == 'json') {
+    if ($returntype == 'json' || $request->query->get('json')) {
         $response = new Response(json_encode($pagedata));
         $response->headers->set('Content-Type', 'application/json');
         return $response;
@@ -147,6 +153,14 @@ $app->post('/todo/add', function (Request $request) use ($app) {
     $description = $request->get('description');
 
     if (empty($description)) {
+        if ($request->query->get('json')) {
+            $response = new Response(json_encode([
+                'status' => false,
+                'message' => 'Please enter a Description'
+            ]));
+            $response->headers->set('Content-Type', 'application/json');
+            return $response;
+        }
         $app['session']->getFlashBag()->add('description', (object) ['added' => false, 'message' => 'Please enter a Description']);
         return $app->redirect('/todo');
     }
@@ -156,13 +170,29 @@ $app->post('/todo/add', function (Request $request) use ($app) {
         VALUES (?, ?)
     ", array($user_id, $description));
 
+    if ($request->query->get('json')) {
+        $response = new Response(json_encode([
+            'status' => true,
+            'data' => (object) [
+                'todo' => (object) [
+                    'id' => intval($app['db']->lastInsertId()),
+                    'description' => $description,
+                    'status' => 'PROGRESS',
+                    'user_id' => $user_id
+                ]
+            ]
+        ]));
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
+    }
+
     $app['session']->getFlashBag()->add('todoMessage', 'Todo added');
 
     return $app->redirect('/todo');
 });
 
 
-$app->match('/todo/delete/{id}', function ($id) use ($app) {
+$app->match('/todo/delete/{id}', function (Request $request, $id) use ($app) {
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
@@ -171,6 +201,12 @@ $app->match('/todo/delete/{id}', function ($id) use ($app) {
         DELETE FROM `todos`
         WHERE `user_id` = ? AND `id` = ?
     ", array($user['id'], $id));
+
+    if ($request->query->get('json')) {
+        $response = new Response(json_encode(['status' => true]));
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
+    }
 
     $app['session']->getFlashBag()->add('todoMessage', 'Todo has been removed');
 
@@ -189,11 +225,17 @@ $app->match('/todo/status/{id}', function (Request $request, $id) use ($app) {
         return $app->redirect('/todo');
     }
 
-    $delete = $app['db']->executeStatement("
+    $update = $app['db']->executeStatement("
         UPDATE `todos`
         SET `status` = ?
         WHERE `user_id` = ? AND `id` = ?
     ", array($status, $user['id'], $id));
+
+    if ($request->query->get('json')) {
+        $response = new Response(json_encode(['status' => true]));
+        $response->headers->set('Content-Type', 'application/json');
+        return $response;
+    }
 
     return $app->redirect('/todo');
 });

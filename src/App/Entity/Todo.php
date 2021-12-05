@@ -8,5 +8,5 @@ class Todo
     	'COMPLETE' => 'Completed'
     );
 
-    public const PAGESIZE = 5;
+    public const PAGESIZE = 20;
 }
